@@ -2,9 +2,11 @@ package transmission_rpc
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
 
 type Client struct {
@@ -17,10 +19,37 @@ type Client struct {
 	token    string
 }
 
+type request struct {
+	Arguments interface{} `json:"arguments"`
+	Method    string      `json:"method"`
+	Tag       int         `json:"tag"`
+}
+
+type Response struct {
+	Arguments map[string]interface{} `json:"arguments"` // map of response arguments
+	Result    string                 `json:"result"`
+	Tag       int                    `json:"tag"`
+}
+
 const (
 	defaultEndpoint = `/transmission/rpc`
 	defaultTries    = 3
 )
+
+var (
+	tag    = 0
+	tagMtx sync.Mutex
+)
+
+func getTag() int {
+	tagMtx.Lock()
+	defer tagMtx.Unlock()
+	tag++
+	if tag < 0 {
+		tag = 0
+	}
+	return tag
+}
 
 func NewClient(address string) *Client {
 	return &Client{
@@ -69,4 +98,31 @@ func (c *Client) RequestRaw(request []byte) ([]byte, error) {
 		res.Body.Close()
 	}
 	return nil, fmt.Errorf("Gave up after %d tries", defaultTries)
+}
+
+func (c *Client) Request(method string, args interface{}) (*Response, error) {
+	req := request{
+		Method:    method,
+		Arguments: args,
+		Tag:       getTag(),
+	}
+	js, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.RequestRaw(js)
+	if err != nil {
+		return nil, err
+	}
+	var res Response
+	if err := json.Unmarshal(resp, &res); err != nil {
+		return nil, err
+	}
+	if res.Tag != req.Tag {
+		return &res, fmt.Errorf("Tag mismatch (%d != %d)", res.Tag, req.Tag)
+	}
+	if res.Result != "success" {
+		return &res, fmt.Errorf("Unsuccessful response")
+	}
+	return &res, nil
 }
