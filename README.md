@@ -1,5 +1,4 @@
-# transmission_rpc [![GoDoc](https://godoc.org/github.com/drbig/transmission_rpc?status.s
-vg)](http://godoc.org/github.com/drbig/transmission_rpc)
+# transmission_rpc [![GoDoc](https://godoc.org/github.com/drbig/transmission_rpc?status.svg)](http://godoc.org/github.com/drbig/transmission_rpc)
 
 Package transmission_rpc provides unassuming interface to the Transmission RPC service.
 
