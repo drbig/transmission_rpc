@@ -1,5 +1,6 @@
 // See LICENSE.txt for licensing information.
 
+// Package transmission_rpc provides unassuming interface to the Transmission RPC service.
 package transmission_rpc
 
 import (
