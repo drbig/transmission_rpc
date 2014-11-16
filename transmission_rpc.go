@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+// Client represents a single connection point to a Transmission RPC instance.
+// Mind the Endpoint URL path.
 type Client struct {
 	Client   *http.Client // HTTP client
 	Address  string       // Transmission RPC server URL
@@ -19,12 +21,17 @@ type Client struct {
 	token    string
 }
 
+// request represents internal higher-level request data.
+// Tag should be treated read-only.
 type request struct {
 	Arguments interface{} `json:"arguments"`
 	Method    string      `json:"method"`
 	Tag       int         `json:"tag"`
 }
 
+// Response represents higher-level response.
+// Both Result and Tag are checked before passing data further, i.e. you can treat them
+// as if they weren't here.
 type Response struct {
 	Arguments map[string]interface{} `json:"arguments"` // map of response arguments
 	Result    string                 `json:"result"`
@@ -51,6 +58,8 @@ func getTag() int {
 	return tag
 }
 
+// NewClient creates new Transmission RPC client that is concurrency-safe.
+// You can override both the Endpoint URL and the default HTTP client.
 func NewClient(address string) *Client {
 	return &Client{
 		Client:   &http.Client{},
@@ -59,18 +68,22 @@ func NewClient(address string) *Client {
 	}
 }
 
+// SetAuth enables the basic HTTP auth for the given client.
 func (c *Client) SetAuth(login, password string) {
 	c.login = login
 	c.password = password
 	c.auth = true
 }
 
+// RemAuth disables the basic HTTP auth for the given client.
 func (c *Client) RemAuth() {
 	c.login = ""
 	c.password = ""
 	c.auth = false
 }
 
+// RquestRaw is the HTTP-interacting method that has no notion of the data being
+// passed around.
 func (c *Client) RequestRaw(request []byte) ([]byte, error) {
 	for t := 0; t < defaultTries; t++ {
 		req, err := http.NewRequest("POST", c.Address+c.Endpoint, bytes.NewBuffer(request))
@@ -100,6 +113,10 @@ func (c *Client) RequestRaw(request []byte) ([]byte, error) {
 	return nil, fmt.Errorf("Gave up after %d tries", defaultTries)
 }
 
+// Request performs a basic request, checking for both tag match and response
+// success. The caller is responsible for handling the arguments returned.
+// Note that calls to this function can be done in parallel, and with no error
+// indicate a fully successful and checked result.
 func (c *Client) Request(method string, args interface{}) (*Response, error) {
 	req := request{
 		Method:    method,
