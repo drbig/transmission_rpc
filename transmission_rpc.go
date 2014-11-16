@@ -50,6 +50,8 @@ var (
 	tagMtx sync.Mutex
 )
 
+// getTag returns the next number. It's concurrency and overflow safe.
+// Used just as a safeguard.
 func getTag() int {
 	tagMtx.Lock()
 	defer tagMtx.Unlock()
